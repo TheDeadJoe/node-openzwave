@@ -27,6 +27,7 @@
 //-----------------------------------------------------------------------------
 #include <string>
 #include <cstring>
+#include <pthread.h>
 #include "Defs.h"
 #include "LogImpl.h"
 
@@ -88,6 +89,7 @@ void LogImpl::Write
 	// create a timestamp string
 	string timeStr = GetTimeStampString();
 	string nodeStr = GetNodeString( _nodeId );
+	string loglevelStr = GetLogLevelString(_logLevel);
 
 	// handle this message
 	if( (_logLevel <= m_queueLevel) || (_logLevel == LogLevel_Internal) )	// we're going to do something with this message...
@@ -115,6 +117,8 @@ void LogImpl::Write
 				{
 					strcpy( outBufPtr, timeStr.c_str() );
 					outBufPtr += timeStr.length();
+					strcpy( outBufPtr, loglevelStr.c_str() );
+					outBufPtr += loglevelStr.length();
 					strcpy( outBufPtr, nodeStr.c_str() );
 					outBufPtr += nodeStr.length();
 				}
@@ -248,7 +252,7 @@ string LogImpl::GetTimeStampString
 	char buf[100];
 	snprintf( buf, sizeof(buf), "%04d-%02d-%02d %02d:%02d:%02d.%03d ", 
 		tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
-		  tm->tm_hour, tm->tm_min, tm->tm_sec, tv.tv_usec / 1000 );
+		  tm->tm_hour, tm->tm_min, tm->tm_sec, (int)tv.tv_usec / 1000 );
 	string str = buf;
 	return str;
 }
@@ -288,7 +292,7 @@ string LogImpl::GetThreadId
 )
 {
 	char buf[20];
-	snprintf( buf, sizeof(buf), "%08x ", pthread_self() );
+	snprintf( buf, sizeof(buf), "%08lx ", (long unsigned int)pthread_self() );
 	string str = buf;
 	return str;
 }
@@ -299,8 +303,27 @@ string LogImpl::GetThreadId
 //-----------------------------------------------------------------------------
 void LogImpl::SetLogFileName
 ( 
-	string _filename
+	const string &_filename
 )
 {
 	m_filename = _filename;
+}
+
+
+//-----------------------------------------------------------------------------
+//	<LogImpl::GetLogLevelString>
+//	Provide a new log file name (applicable to future writes)
+//-----------------------------------------------------------------------------
+string LogImpl::GetLogLevelString
+(
+		LogLevel _level
+)
+{
+	if ((_level >= LogLevel_None) && (_level <= LogLevel_Internal)) {
+		char buf[20];
+		snprintf( buf, sizeof(buf), "%s, ", LogLevelString[_level] );
+		return buf;
+	}
+	else
+		return "Unknown, ";
 }
